@@ -230,7 +230,7 @@ function calculateIntersection() {
 
     // t1, t2 is solution of At^2+Bt+C = 0
     let t1, t2;
-    let sqrtD = Math.sqrt(D);
+    let sqrtD = Math.sqrt(Math.max(D, 0));
 
     if (D > 0) {
         // distinct t1, t2 is real
