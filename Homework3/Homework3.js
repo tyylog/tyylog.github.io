@@ -235,8 +235,8 @@ function calculateIntersection() {
     if (D > 0) {
         // distinct t1, t2 is real
 
-        t1 = (-B + sqrtD) / (2*A);
-        t2 = (-B - sqrtD) / (2*A);
+        t1 = (-B - sqrtD) / (2*A);
+        t2 = (-B + sqrtD) / (2*A);
 
         if ((t1 < 0 || t1 > 1) && (t2 < 0 || t2 > 1)) {
             // both t1 and t2 are out of line segment
