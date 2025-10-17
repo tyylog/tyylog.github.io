@@ -6,11 +6,11 @@
 - Applying image texture (../images/textures/woodWall3.png) to each face of the cube
 -----------------------------------------------------------------------------------*/
 
-import { resizeAspectRatio, Axes } from './util/util.js';
-import { Shader, readShaderFile } from './util/shader.js';
+import { resizeAspectRatio, Axes } from '../util/util.js';
+import { Shader, readShaderFile } from '../util/shader.js';
 import { SquarePyramid } from './squarePyramid.js';
-import { Arcball } from './util/arcball.js';
-import { loadTexture } from './util/texture.js';
+import { Arcball } from '../util/arcball.js';
+import { loadTexture } from '../util/texture.js';
 const canvas = document.getElementById('glCanvas');
 const gl = canvas.getContext('webgl2');
 let shader;
