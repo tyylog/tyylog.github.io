@@ -6,7 +6,6 @@ import { Cone } from './cone.js';
 
 const canvas = document.getElementById('glCanvas');
 const gl = canvas.getContext('webgl2');
-let shaderCurrent;
 let shaderPhong;
 let shaderGouraud;
 let lampShader;
@@ -137,7 +136,7 @@ function render() {
         modelMatrix = arcball.getModelRotMatrix();
         viewMatrix = arcball.getViewCamDistanceMatrix();
     }
-
+    
     // drawing the cone
     if (renderingMode == 'PHONG') {
         shaderPhong.use();  // using the cone's shader
@@ -154,9 +153,7 @@ function render() {
         shaderGouraud.setVec3('u_viewPos', cameraPos);
         cone.draw(shaderGouraud);
     }
-    const currCam = camPosFromView(viewMatrix);
-    shaderGouraud.setVec3('u_viewPos', currCam);
-    shaderPhong.setVec3('u_viewPos', currCam);
+
 
     // drawing the lamp
     lampShader.use();
@@ -177,12 +174,7 @@ function setCommonUniforms(s) {
     s.setVec3("light.ambient", vec3.fromValues(0.2, 0.2, 0.2));
     s.setVec3("light.diffuse", vec3.fromValues(0.7, 0.7, 0.7));
     s.setVec3("light.specular", vec3.fromValues(1.0, 1.0, 1.0));
-}
-
-function camPosFromView(m) {
-    const inv = mat4.create();
-    mat4.invert(inv, m);
-    return vec3.fromValues(inv[12], inv[13], inv[14]);
+    s.setVec3("u_viewPos", cameraPos);
 }
 
 async function main() {
@@ -212,14 +204,12 @@ async function main() {
         await initShader();
         await initLampShader();
 
-        shaderCurrent = shaderPhong;
-
         shaderPhong.use();
         setCommonUniforms(shaderPhong);
         shaderGouraud.use();
         setCommonUniforms(shaderGouraud);
 
-        shaderCurrent.setVec3("u_viewPos", cameraPos);
+        
 
         lampShader.use();
         lampShader.setMat4("u_projection", projMatrix);
@@ -249,4 +239,3 @@ async function main() {
         return false;
     }
 }
-
