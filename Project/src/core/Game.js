@@ -6,6 +6,7 @@ import { EnemySpawner } from '../systems/EnemySpawner.js';
 import { CombatSystem } from '../systems/CombatSystem.js';
 import { EnvironmentSystem } from '../systems/EnvironmentSystem.js';
 import { UISystem } from '../systems/UISystem.js';
+import { DecorationSystem } from '../systems/DecorationSystem.js';
 
 
 
@@ -24,6 +25,7 @@ export class Game {
         this.combatSystem = null;
         this.environmentSystem = null;
         this.uiSystem = null;
+        this.decorationSystem = null;
 
         this.elapsedTime = 0;
         this.killCount = 0;
@@ -63,6 +65,7 @@ export class Game {
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.shadowMap.enabled = true;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setClearColor(0xffffff);
         document.body.appendChild(this.renderer.domElement);
@@ -81,7 +84,7 @@ export class Game {
         const planeMaterial = new THREE.MeshLambertMaterial({ color: 0xaaaa00 });
         const ground = new THREE.Mesh(planeGeometry, planeMaterial);
         ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -1;
+        ground.position.y = 0;
         ground.receiveShadow = true;
         this.scene.add(ground);
 
@@ -92,6 +95,20 @@ export class Game {
     }
 
     _initSystems() {
+        // Environment System
+        this.environmentSystem = new EnvironmentSystem(this.scene, this.renderer, this.ground);
+
+        window.addEventListener('keydown', (e) => {
+        if (!this.environmentSystem) return;
+
+        if (e.key === '1') this.environmentSystem.setMode('grassland');
+        if (e.key === '2') this.environmentSystem.setMode('wasteland');
+        if (e.key === '3') this.environmentSystem.setMode('hell');
+        });
+
+        // Decoration System
+        this.decorationSystem = new DecorationSystem(this.scene, this.environmentSystem);
+
         // Enemy Spawner
         this.enemySpawner = new EnemySpawner(this.scene, this.ground, {
                 maxEnemies: 15,
@@ -113,6 +130,7 @@ export class Game {
             (enemy) => {
                 this.handleEnemyDeath(enemy);
         });
+        this.enemySpawner.setBoundsProvider(() => this.environmentSystem.getGroundBounds());
 
         // Combat System
         this.combatSystem = new CombatSystem({
@@ -123,16 +141,6 @@ export class Game {
             enemyAttackCooldown: 1.0,
         });
 
-        // Environment System
-        this.environmentSystem = new EnvironmentSystem(this.scene, this.renderer, this.ground);
-
-        window.addEventListener('keydown', (e) => {
-        if (!this.environmentSystem) return;
-
-        if (e.key === '1') this.environmentSystem.setMode('grassland');
-        if (e.key === '2') this.environmentSystem.setMode('wasteland');
-        if (e.key === '3') this.environmentSystem.setMode('hell');
-        });
         
         // UI System
         this.uiSystem = new UISystem();
@@ -150,6 +158,7 @@ export class Game {
 
     animate() {
         const delta = this.clock.getDelta();
+
         if (this.isGameOver) {
             // 시간 멈추고 싶으면 elapsedTime 안 올리기
             this.uiSystem.update({
@@ -172,6 +181,9 @@ export class Game {
         // 플레이어 업데이트
         this.player.update(delta, this.input);
 
+        // 플레이어는 정해진 바운더리 내에 존재
+        this._clampPlayerToGround();
+
         // 적 스폰/AI 업데이트
         if (this.enemySpawner) {
         this.enemySpawner.update(delta, this.player);
@@ -192,9 +204,14 @@ export class Game {
             );
         }
 
-        // envirnment 갱신
+        // environment 갱신
         if (this.environmentSystem) {
             this.environmentSystem.update(delta);
+        }
+
+        // decoration 갱신
+        if (this.decorationSystem) {
+            this.decorationSystem.update(delta);
         }
 
         // ui 갱신
@@ -217,17 +234,40 @@ export class Game {
     }
 
     _updateCamera() {
-        const offset = this.player.cameraOffset; // Player 안에서 정의
-        const dir = this.player.getForwardVector();
         const pos = this.player.mesh.position;
+        const offset = this.player.cameraOffset; 
+        // 예: new THREE.Vector3(0, 2, 10)
+        // offset.z = 카메라와 플레이어 거리 (반지름)
+        // offset.y = 플레이어보다 카메라가 얼마나 더 위에 있을지 (추가높이)
 
-        this.camera.position.set(
-            pos.x - dir.x * offset.z,
-            pos.y + offset.y,
-            pos.z - dir.z * offset.z
+        const yaw   = this.input.yaw;   // 또는 this.player.yaw;
+        const pitch = this.input.pitch; // 위/아래 각도 (라디안)
+
+        const radius = offset.z;
+
+        // 🔹 yaw/pitch를 이용해서 "플레이어 중심의 구 좌표" 계산
+        const dir = new THREE.Vector3(
+            -Math.sin(yaw) * Math.cos(pitch), // x
+            Math.sin(pitch),                 // y
+            -Math.cos(yaw) * Math.cos(pitch)  // z
+        ).normalize();
+
+        // 플레이어를 기준으로 dir 반대 방향으로 radius만큼 떨어진 위치
+        const camPos = new THREE.Vector3()
+            .copy(pos)
+            .addScaledVector(dir, -radius);
+
+        // 약간 더 위에서 내려다보게 Y 오프셋
+        camPos.y += offset.y;
+
+        this.camera.position.copy(camPos);
+
+        // 항상 플레이어 머리쯤을 바라보게
+        this.camera.lookAt(
+            pos.x,
+            pos.y + 0.5,  // 박스 높이 1이면 머리 근처
+            pos.z
         );
-        const forward = this.player.getForwardVector();
-        this.camera.position.addScaledVector(forward, -offset.z);
     }
 
     handleEnemyDeath(enemy) {
@@ -256,6 +296,26 @@ export class Game {
         if (this.uiSystem) {
             this.uiSystem.showGameOver();
         }
+    }
+
+    _clampPlayerToGround() {
+        if (!this.player || !this.player.mesh || !this.environmentSystem) return;
+
+        const bounds = this.environmentSystem.getGroundBounds();
+        if (!bounds) return;
+
+        const pos = this.player.mesh.position;
+
+        // 플레이어 크기에 맞게 margin 설정 (반지름 느낌)
+        const margin = 0.5;  // 플레이어가 가로 1이라면 0.5 정도
+
+        const minX = bounds.minX + margin;
+        const maxX = bounds.maxX - margin;
+        const minZ = bounds.minZ + margin;
+        const maxZ = bounds.maxZ - margin;
+
+        pos.x = Math.max(minX, Math.min(maxX, pos.x));
+        pos.z = Math.max(minZ, Math.min(maxZ, pos.z));
     }
 
 }

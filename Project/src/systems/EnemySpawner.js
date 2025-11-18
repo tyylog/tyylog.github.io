@@ -35,6 +35,9 @@ export class EnemySpawner {
 
         // Game에서 받은 콜백 저장
         this.onEnemyDeath = onEnemyDeath;
+
+        // 🔥 Game이 넘겨줄 바운드 getter
+        this.boundsProvider = null;
     }
 
     /**
@@ -66,13 +69,44 @@ export class EnemySpawner {
         const px = player.mesh.position.x;
         const pz = player.mesh.position.z;
 
-        const angle = Math.random() * Math.PI * 2;
-        const radius =
-            this.minSpawnRadius +
-            Math.random() * (this.maxSpawnRadius - this.minSpawnRadius);
+        const bounds = this.boundsProvider ? this.boundsProvider() : null;
+        const margin = this.enemyOptions.radius ?? 0.8;  // Enemy 반지름 정도
 
-        const x = px + Math.cos(angle) * radius;
-        const z = pz + Math.sin(angle) * radius;
+        let x, z;
+        let valid = false;
+
+        for (let i = 0; i < 10; i++) {  // 최대 10번 시도
+            const angle = Math.random() * Math.PI * 2;
+            const radius =
+                this.minSpawnRadius +
+                Math.random() * (this.maxSpawnRadius - this.minSpawnRadius);
+
+            x = px + Math.cos(angle) * radius;
+            z = pz + Math.sin(angle) * radius;
+
+            if (!bounds) {
+                valid = true;
+                break;
+            }
+
+            const minX = bounds.minX + margin;
+            const maxX = bounds.maxX - margin;
+            const minZ = bounds.minZ + margin;
+            const maxZ = bounds.maxZ - margin;
+
+            if (
+                x >= minX && x <= maxX &&
+                z >= minZ && z <= maxZ
+            ) {
+                valid = true;
+                break;
+            }
+        }
+
+        if (!valid) {
+            // 맵이 너무 좁아서 유효한 위치 못 찾으면 스폰 포기
+            return null;
+        }
 
         // 👇 Enemy 생성 시 onDeathCallback 전달
         const enemy = new Enemy(
@@ -97,5 +131,9 @@ export class EnemySpawner {
     _cleanupDead() {
         this.enemies = this.enemies.filter(e => !e.isDead());
         // 위 코드: e.isDead 필드가 있거나 isDead() 메서드가 있으면 제거 기준으로 사용
+    }
+
+    setBoundsProvider(fn) {
+        this.boundsProvider = fn;   // () => ({minX, maxX, minZ, maxZ}) 또는 null
     }
 }

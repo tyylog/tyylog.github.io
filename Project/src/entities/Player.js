@@ -20,7 +20,7 @@ export class Player extends Character {
         this.velocityY = 0;
         this.isGrounded = true;
 
-        this.cameraOffset = new THREE.Vector3(0, 2, 5);
+        this.cameraOffset = new THREE.Vector3(0, 2, 10);
     }
 
     getForwardVector() {
@@ -41,23 +41,6 @@ export class Player extends Character {
         );
         right.normalize();
         return right;
-    }
-
-    onDeath() {
-        console.log("PLAYER DIED");
-        // 이동 막기
-        this.speed = 0;
-
-        // UI에 Game Over 표시
-        const div = document.createElement('div');
-        div.innerHTML = "GAME OVER";
-        div.style.position = 'fixed';
-        div.style.top = '50%';
-        div.style.left = '50%';
-        div.style.transform = 'translate(-50%,-50%)';
-        div.style.color = 'white';
-        div.style.fontSize = '80px';
-        document.body.appendChild(div);
     }
 
     update(delta, input) {

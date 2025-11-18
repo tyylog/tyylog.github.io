@@ -61,8 +61,9 @@ export class CombatSystem {
 
         const playerPos = player.mesh.position;
 
-        // 플레이어가 바라보는 forward 벡터 필요
-        let forward = this._getPlayerForward(player);
+        // 플레이어가 바라보는 forward 벡터
+        const forward = player.getForwardVector().clone();
+        forward.y = 0;
 
         enemies.forEach(enemy => {
             if (!enemy.mesh || (enemy.isDead && enemy.isDead())) return;
@@ -82,9 +83,7 @@ export class CombatSystem {
             if (angle > this.playerAttackAngle) return;
 
             // 여기까지 왔다면 타격 판정
-            if (typeof enemy.takeDamage === 'function') {
-                enemy.takeDamage(this.playerAttackDamage);
-            }
+            enemy.takeDamage(this.playerAttackDamage);
         });
     }
 
@@ -111,27 +110,12 @@ export class CombatSystem {
             }
 
             // 공격 발동
-            const dmg = enemy.attackDamage || 5;
-            if (typeof player.takeDamage === 'function') {
-                player.takeDamage(dmg);
-            }
+            const dmg = enemy.attackDamage;
+            player.takeDamage(dmg);
 
             // 쿨타임 리셋
             this._enemyAttackTimers.set(enemy, this.enemyAttackCooldown);
         });
     }
 
-    _getPlayerForward(player) {
-        // Player에 getForwardVector()가 있다면 그걸 쓰는 게 제일 좋음
-        if (typeof player.getForwardVector === 'function') {
-            return player.getForwardVector().clone().normalize();
-        }
-        // 없으면 카메라/mesh rotation 기준으로 간단히 계산 (z-forward 기준)
-        const forward = this._tmpForward;
-        forward.set(0, 0, -1);
-        forward.applyQuaternion(player.mesh.quaternion);
-        forward.y = 0;
-        forward.normalize();
-        return forward;
-    }
 }

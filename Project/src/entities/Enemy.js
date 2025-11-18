@@ -32,6 +32,10 @@ export class Enemy extends Character {
         this.attackDamage = attackDamage;
         this.attackCooldown = attackCooldown;
 
+        // 적들은 y좌표 고정
+        this.radius = radius;
+        this.groundY = ground ? ground.position.y : 0;
+
         this.state = 'chase';
 
         const geom = new THREE.SphereGeometry(radius, 16, 16);
@@ -58,6 +62,10 @@ export class Enemy extends Character {
 
         const toPlayer = this._tmpDir;
         toPlayer.subVectors(player.mesh.position, this.mesh.position);
+
+        // y좌표 무시
+        toPlayer.y = 0;
+
         const distance = toPlayer.length();
 
         switch (this.state) {
@@ -72,9 +80,11 @@ export class Enemy extends Character {
             case 'attack':
                 if (distance > this.attackRange) {
                     this.state = 'chase';
-                }
+                } 
                 break;
         }
+        // 🔥 이동 후에도 항상 지면 높이로 고정
+        this.mesh.position.y = this.groundY + this.radius;
 
         this._lookAtPlayer(player);
         this.updateCollider();
